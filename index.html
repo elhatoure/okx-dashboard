@@ -157,19 +157,48 @@ select{font-size:12px;padding:3px 6px;border-radius:8px;border:0.5px solid #333;
   <span id="entry-price" style="font-size:14px;font-weight:500"></span>
 </div>
 
-<div class="g2">
-  <div class="card" style="text-align:center">
-    <div class="lbl">Victoires</div>
-    <div class="val up" id="sw">0</div>
+<div class="card">
+  <div class="hdr-title" style="margin-bottom:10px">Performance session</div>
+  <div class="g2" style="margin-bottom:8px">
+    <div style="text-align:center;background:#1f2a1f;border-radius:8px;padding:8px">
+      <div class="lbl">Victoires</div>
+      <div class="val up" id="sw">0</div>
+    </div>
+    <div style="text-align:center;background:#2a1f1f;border-radius:8px;padding:8px">
+      <div class="lbl">Défaites</div>
+      <div class="val dn" id="sl">0</div>
+    </div>
   </div>
-  <div class="card" style="text-align:center">
-    <div class="lbl">Défaites</div>
-    <div class="val dn" id="sl">0</div>
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:12px;color:#888">Win rate session</span>
+    <span class="val" id="swr" style="font-size:20px">—</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+    <span style="font-size:11px;color:#888" id="sess-label">—</span>
+    <span style="font-size:11px;color:#888" id="sess-trades">0 trades</span>
   </div>
 </div>
-<div class="card" style="text-align:center">
-  <div class="lbl">Win rate session</div>
-  <div class="val" id="swr" style="font-size:24px">—</div>
+
+<div class="card">
+  <div class="hdr-title" style="margin-bottom:10px">Performance générale</div>
+  <div class="g2" style="margin-bottom:8px">
+    <div style="text-align:center;background:#1f2a1f;border-radius:8px;padding:8px">
+      <div class="lbl">Victoires</div>
+      <div class="val up" id="gw">0</div>
+    </div>
+    <div style="text-align:center;background:#2a1f1f;border-radius:8px;padding:8px">
+      <div class="lbl">Défaites</div>
+      <div class="val dn" id="gl">0</div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:12px;color:#888">Win rate général</span>
+    <span class="val" id="gwr" style="font-size:20px">—</span>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+    <span style="font-size:11px;color:#888">Depuis ouverture du dashboard</span>
+    <span style="font-size:11px;color:#888" id="gen-trades">0 trades</span>
+  </div>
 </div>
 
 <div class="card">
@@ -433,9 +462,8 @@ function checkCycleTransition(){
       if(sigN1&&entryPrice!==null&&price>0){
         const won=sigN1==='UP'?price>entryPrice:price<entryPrice;
         const t=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-        if(won){wins++;sndWin();addHist(t,sigN1,'WIN')}
-        else{losses++;sndLoss();addHist(t,sigN1,'LOSS')}
-        updateStats();
+        if(won){wins++;sndWin();addHist(t,sigN1,'WIN');updateStats(sigN1,true)}
+        else{losses++;sndLoss();addHist(t,sigN1,'LOSS');updateStats(sigN1,false)}
       }
       // Reset pour le nouveau cycle N-1
       sigN1=null; entryPrice=null; cyclePhase='n1';
@@ -454,11 +482,41 @@ function addHist(time,dir,result){
   el('hist').innerHTML=hist.map(h=>`<div class="hist-row"><span style="color:#888">${h.time}</span><span style="color:${h.dir==='UP'?'#4caf7d':'#e05555'}">${h.dir==='UP'?'▲':'▼'} ${h.dir}</span><span class="wl ${h.result==='WIN'?'w':'l'}">${h.result}</span></div>`).join('');
 }
 
-function updateStats(){
-  el('sw').textContent=wins; el('sl').textContent=losses;
-  const tot=wins+losses;
-  el('swr').textContent=tot>0?Math.round(wins/tot*100)+'%':'—';
-  el('swr').style.color=tot>0?(wins/tot>=.6?'#4caf7d':wins/tot>=.5?'#e0e0e0':'#e05555'):'#888';
+// Stats session — remises à zéro à chaque changement de session
+let sessName='', sessWins=0, sessLosses=0;
+// Stats générales — depuis ouverture
+let genWins=0, genLosses=0;
+
+function wrColor(wr){ return wr>=60?'#4caf7d':wr>=50?'#e0e0e0':'#e05555' }
+
+function updateStats(dir, won){
+  const sess=getSession();
+  // Détecter changement de session
+  if(sess.name!==sessName){
+    sessName=sess.name;
+    sessWins=0; sessLosses=0;
+  }
+  if(won){ sessWins++; genWins++; }
+  else { sessLosses++; genLosses++; }
+
+  // Session
+  const sTot=sessWins+sessLosses;
+  const sWR=sTot>0?Math.round(sessWins/sTot*100):0;
+  el('sw').textContent=sessWins;
+  el('sl').textContent=sessLosses;
+  el('swr').textContent=sTot>0?sWR+'%':'—';
+  el('swr').style.color=sTot>0?wrColor(sWR):'#888';
+  el('sess-label').textContent=sessName||'—';
+  el('sess-trades').textContent=sTot+' trade'+(sTot>1?'s':'');
+
+  // Général
+  const gTot=genWins+genLosses;
+  const gWR=gTot>0?Math.round(genWins/gTot*100):0;
+  el('gw').textContent=genWins;
+  el('gl').textContent=genLosses;
+  el('gwr').textContent=gTot>0?gWR+'%':'—';
+  el('gwr').style.color=gTot>0?wrColor(gWR):'#888';
+  el('gen-trades').textContent=gTot+' trade'+(gTot>1?'s':'');
 }
 
 function connect(){
