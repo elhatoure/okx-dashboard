@@ -261,51 +261,61 @@ function calcOBI(){
 }
 
 // Évalue le signal sur les données FIGÉES de N-1
+// Règle : CVD obligatoire + au moins 1 filtre supplémentaire
 function evalSignalOnSnap(){
   const obi=calcOBI();
   const sess=getSession();
-  const cvdUp=snap.cvd>0, cvdStrong=Math.abs(snap.cvd)>80;
-  const obiUp=obi>0, obiStrong=Math.abs(obi)>15;
-  const fd=snap.buyVol-snap.sellVol, fundBiasUp=fd>0, fundStrong=Math.abs(fd)>50;
+  const cvdUp=snap.cvd>0, cvdStrong=Math.abs(snap.cvd)>30;
+  const obiUp=obi>0, obiStrong=Math.abs(obi)>8;
+  const fd=snap.buyVol-snap.sellVol, fundBiasUp=fd>0, fundStrong=Math.abs(fd)>20;
   const range=snap.high-snap.low;
   const body=range>0?Math.abs(snap.closePrice-snap.open)/range:0;
-  const absDetected=snap.vol>200&&body<0.25&&Math.abs(snap.cvd)>100;
-  const absDir=snap.cvd<0&&body<0.25?'haussière':snap.cvd>0&&body<0.25?'baissière':null;
+  const absDetected=snap.vol>50&&body<0.40&&Math.abs(snap.cvd)>30;
+  const absDir=snap.cvd<0&&body<0.40?'haussière':snap.cvd>0&&body<0.40?'baissière':null;
+
+  // CVD obligatoire
+  if(!cvdStrong)return{dir:null,score:0,votes:{up:0,dn:0},obi,obiStrong,obiUp,cvdStrong,cvdUp,fundStrong,fundBiasUp,absDetected,absDir,sess,fd};
 
   let votes={up:0,dn:0};
-  if(cvdStrong){cvdUp?votes.up++:votes.dn++}
+  // CVD compte pour 1 vote (obligatoire)
+  cvdUp?votes.up++:votes.dn++;
+  // Filtres optionnels
   if(obiStrong){obiUp?votes.up++:votes.dn++}
   if(absDetected&&absDir){absDir==='haussière'?votes.up++:votes.dn++}
   if(fundStrong){fundBiasUp?votes.up++:votes.dn++}
 
+  // Signal : CVD + au moins 1 autre dans la même direction
   let dir=null,score=0;
-  if(votes.up>=3&&sess.ok){dir='UP';score=votes.up}
-  else if(votes.dn>=3&&sess.ok){dir='DOWN';score=votes.dn}
+  if(votes.up>=2&&cvdUp&&sess.ok){dir='UP';score=votes.up}
+  else if(votes.dn>=2&&!cvdUp&&sess.ok){dir='DOWN';score=votes.dn}
 
   return{dir,score,votes,obi,obiStrong,obiUp,cvdStrong,cvdUp,fundStrong,fundBiasUp,absDetected,absDir,sess,fd};
 }
 
 // Évalue en temps réel (pendant N-1) pour affichage live
+// Même logique que evalSignalOnSnap mais sur données live
 function evalSignalLive(){
   const obi=calcOBI();
   const sess=getSession();
-  const cvdUp=cvd_n1>0, cvdStrong=Math.abs(cvd_n1)>80;
-  const obiUp=obi>0, obiStrong=Math.abs(obi)>15;
-  const fd=buyVol_n1-sellVol_n1, fundBiasUp=fd>0, fundStrong=Math.abs(fd)>50;
+  const cvdUp=cvd_n1>0, cvdStrong=Math.abs(cvd_n1)>30;
+  const obiUp=obi>0, obiStrong=Math.abs(obi)>8;
+  const fd=buyVol_n1-sellVol_n1, fundBiasUp=fd>0, fundStrong=Math.abs(fd)>20;
   const range=cycHigh_n1-cycLow_n1;
   const body=range>0?Math.abs(price-cycOpen_n1)/range:0;
-  const absDetected=cycVol_n1>200&&body<0.25&&Math.abs(cvd_n1)>100;
-  const absDir=cvd_n1<0&&body<0.25?'haussière':cvd_n1>0&&body<0.25?'baissière':null;
+  const absDetected=cycVol_n1>50&&body<0.40&&Math.abs(cvd_n1)>30;
+  const absDir=cvd_n1<0&&body<0.40?'haussière':cvd_n1>0&&body<0.40?'baissière':null;
+
+  if(!cvdStrong)return{dir:null,score:0,votes:{up:0,dn:0},obi,obiStrong,obiUp,cvdStrong,cvdUp,fundStrong,fundBiasUp,absDetected,absDir,sess,fd};
 
   let votes={up:0,dn:0};
-  if(cvdStrong){cvdUp?votes.up++:votes.dn++}
+  cvdUp?votes.up++:votes.dn++;
   if(obiStrong){obiUp?votes.up++:votes.dn++}
   if(absDetected&&absDir){absDir==='haussière'?votes.up++:votes.dn++}
   if(fundStrong){fundBiasUp?votes.up++:votes.dn++}
 
   let dir=null,score=0;
-  if(votes.up>=3&&sess.ok){dir='UP';score=votes.up}
-  else if(votes.dn>=3&&sess.ok){dir='DOWN';score=votes.dn}
+  if(votes.up>=2&&cvdUp&&sess.ok){dir='UP';score=votes.up}
+  else if(votes.dn>=2&&!cvdUp&&sess.ok){dir='DOWN';score=votes.dn}
 
   return{dir,score,votes,obi,obiStrong,obiUp,cvdStrong,cvdUp,fundStrong,fundBiasUp,absDetected,absDir,sess,fd};
 }
