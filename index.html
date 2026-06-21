@@ -286,8 +286,8 @@ function evalSignalOnSnap(){
 
   // Signal : CVD + au moins 1 autre dans la même direction
   let dir=null,score=0;
-  if(votes.up>=2&&cvdUp&&sess.ok){dir='UP';score=votes.up}
-  else if(votes.dn>=2&&!cvdUp&&sess.ok){dir='DOWN';score=votes.dn}
+  if(votes.up>=2&&cvdUp){dir='UP';score=votes.up}
+  else if(votes.dn>=2&&!cvdUp){dir='DOWN';score=votes.dn}
 
   return{dir,score,votes,obi,obiStrong,obiUp,cvdStrong,cvdUp,fundStrong,fundBiasUp,absDetected,absDir,sess,fd};
 }
@@ -314,8 +314,8 @@ function evalSignalLive(){
   if(fundStrong){fundBiasUp?votes.up++:votes.dn++}
 
   let dir=null,score=0;
-  if(votes.up>=2&&cvdUp&&sess.ok){dir='UP';score=votes.up}
-  else if(votes.dn>=2&&!cvdUp&&sess.ok){dir='DOWN';score=votes.dn}
+  if(votes.up>=2&&cvdUp){dir='UP';score=votes.up}
+  else if(votes.dn>=2&&!cvdUp){dir='DOWN';score=votes.dn}
 
   return{dir,score,votes,obi,obiStrong,obiUp,cvdStrong,cvdUp,fundStrong,fundBiasUp,absDetected,absDir,sess,fd};
 }
@@ -397,7 +397,7 @@ function updateUI(){
     setBadge('f-obi',f.obiStrong?(f.obiUp?'Bids >15%':'Asks >15%'):'Équilibré',f.obiStrong?(f.obiUp?'ok':'ko'):'nt');
     setBadge('f-abs',absDetected?'Détectée':'Absente',absDetected?'warn':'nt');
     setBadge('f-fund',f.fundStrong?(f.fundBiasUp?'Haussier':'Baissier'):'Neutre',f.fundStrong?(f.fundBiasUp?'ok':'ko'):'nt');
-    setBadge('f-sess',f.sess.name,f.sess.ok?'ok':'ko');
+    setBadge('f-sess',f.sess.name,f.sess.ok?'ok':'nt');
 
     entryBox.className='entry-box';
 
@@ -499,9 +499,13 @@ let genWins=0, genLosses=0;
 
 function wrColor(wr){ return wr>=60?'#4caf7d':wr>=50?'#e0e0e0':'#e05555' }
 
+let sessName='', sessWins=0, sessLosses=0;
+let genWins=0, genLosses=0;
+
+function wrColor(wr){ return wr>=60?'#4caf7d':wr>=50?'#e0e0e0':'#e05555' }
+
 function updateStats(dir, won){
   const sess=getSession();
-  // Détecter changement de session
   if(sess.name!==sessName){
     sessName=sess.name;
     sessWins=0; sessLosses=0;
@@ -509,7 +513,6 @@ function updateStats(dir, won){
   if(won){ sessWins++; genWins++; }
   else { sessLosses++; genLosses++; }
 
-  // Session
   const sTot=sessWins+sessLosses;
   const sWR=sTot>0?Math.round(sessWins/sTot*100):0;
   el('sw').textContent=sessWins;
@@ -519,7 +522,6 @@ function updateStats(dir, won){
   el('sess-label').textContent=sessName||'—';
   el('sess-trades').textContent=sTot+' trade'+(sTot>1?'s':'');
 
-  // Général
   const gTot=genWins+genLosses;
   const gWR=gTot>0?Math.round(genWins/gTot*100):0;
   el('gw').textContent=genWins;
